@@ -1,4 +1,4 @@
-package otp
+package base
 
 import (
 	"bytes"
@@ -16,7 +16,7 @@ type OTP interface {
 }
 
 type Base struct {
-	hash   func() hash.Hash
+	hasher func() hash.Hash
 	secret string
 	digits int
 }
@@ -41,8 +41,11 @@ func (b *Base) generateOTP(counter int64) (string, error) {
 	bs := make([]byte, 8)
 	binary.BigEndian.PutUint64(bs, uint64(counter))
 
-	hs := hmac.New(b.hash, key)
-	hs.Write(bs)
+	hs := hmac.New(b.hasher, key)
+	_, err = hs.Write(bs)
+	if err != nil {
+		return "", err
+	}
 	h := hs.Sum(nil)
 
 	o := h[19] & 15
@@ -55,7 +58,7 @@ func (b *Base) generateOTP(counter int64) (string, error) {
 		return "", err
 	}
 
-	h12 := (int(header) & 0x7fffffff) % 1000000
+	h12 := (int(header) & 0x7fffffff) % (10 * b.digits)
 
 	otp := strconv.Itoa(h12)
 
@@ -63,11 +66,15 @@ func (b *Base) generateOTP(counter int64) (string, error) {
 }
 
 func (b *Base) prefix0(otp string) string {
-	if len(otp) == 6 {
+	if len(otp) == b.digits {
 		return otp
 	}
-	for i := 6 - len(otp); i > 0; i-- {
+	for i := b.digits - len(otp); i > 0; i-- {
 		otp = "0" + otp
 	}
 	return otp
+}
+
+func New(secret string, digits int, hasher func() hash.Hash) *Base {
+	return &Base{secret: secret, digits: digits, hasher: hasher}
 }
