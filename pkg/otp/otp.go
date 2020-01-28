@@ -6,6 +6,7 @@ import (
 	"encoding/base32"
 	"encoding/binary"
 	"hash"
+	"math"
 	"strconv"
 	"strings"
 )
@@ -58,7 +59,7 @@ func (b *Base) generateOTP(counter int64) (string, error) {
 		return "", err
 	}
 
-	h12 := (int(header) & 0x7fffffff) % (10 * b.digits)
+	h12 := (int(header) & 0x7fffffff) % int(math.Pow10(b.digits))
 
 	otp := strconv.Itoa(h12)
 
